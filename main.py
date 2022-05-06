@@ -8,57 +8,41 @@ from model.utils import KL_loss_forVAE, loss_function, EarlyStopping
 from dataset.utils import *
 from config import *
 import random as rn
+from utils import *
 
 np.random.seed(42)
 # The below is necessary for starting core Python generated random numbers
 # in a well-defined state.
 rn.seed(12345)
 
-
-def main(save_model_path, **kwargs):
+def train(save_model_path, **kwargs):
     cuda = torch.cuda.is_available()
     device = torch.device("cuda" if cuda else "cpu")
     if cuda:
         print('added visible gpu')
         ngpus = torch.cuda.device_count()
 
-    bkg = np.load(train_val_test + '/background_train.npy')
-    bkg_val = np.load(train_val_test + '/background_val.npy')
+    device = "cpu"
+    #########################LOAD DATA###################START############
+    train_data, trainloader, valloader = load_data_train_eval(train_val_test, train_dict, feat_selected=['met', 'mt', 'mct2'])
+    #########################LOAD DATA###################END#######
 
-    train_df = pd.DataFrame(bkg[:, :-1], columns=cols_train)
-    val_df = pd.DataFrame(bkg_val[:, :-1], columns=cols_train)
+    ########### LOAD MODEL /TRAIN/EVAL##############
 
-    train_data = PandasDF(train_df, ['met', 'mt', 'mct2'])
-    val_data = PandasDF(val_df, ['met', 'mt', 'mct2'])
-
-    batch_size = train_dict['batch_size']
-
-    trainloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=2)
-    valloader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=2)
-
-    ####initialize model####
     input_size = train_data[0][0].size()[0]
-
     Nf_lognorm = train_dict['Nf_lognorm']
-
-    hidden_size = train_dict['hidden_size']
-    latent_dim = train_dict['latent_dim']
     weight_KL_loss = train_dict['weight_KL_loss']
     epochs = train_dict['epochs']
     lr = train_dict['lr']
-    #act_fun = train_dict['act_fun'] #### TO DO: ALLOW for this coiche in the model buildign
     model_name = train_dict['model_name']
-
     Nf_binomial = input_size - Nf_lognorm
 
-    vae = VAE(input_size, hidden_size
-              , latent_dim, Nf_lognorm, Nf_binomial).to(device)
+    vae = initialize_model(train_dict, input_size).to(device)
 
     ####Train Loop####
     """
     Set the model to the training mode first and train
     """
-
     train_loss = []
     weights_loss = [5, 10, 10]
     val_loss = 10 ** 16
@@ -113,7 +97,6 @@ def main(save_model_path, **kwargs):
             torch.save(vae.state_dict(), save_model_path / model_name)
             val_loss = temp_val_loss
 
-
         early_stopping(temp_val_loss)
         if early_stopping.early_stop:
             break
@@ -139,7 +122,4 @@ if __name__ == "__main__":
         print('creating path')
         os.makedirs(save_model_path)
 
-    main(save_model_path, train_dict=train_dict)
-
-
-
+    train(save_model_path, train_dict=train_dict)

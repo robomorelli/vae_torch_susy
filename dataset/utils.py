@@ -1,8 +1,7 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import pandas as pd
 import os
-
 
 class PandasDF(Dataset):
     def __init__(self, df, columns, cut = True):

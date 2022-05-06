@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='cuts on root file and conversion to numpy data')
 
-    parser.add_argument('--type', nargs="?", type = str, default = 'bkg', help='bkg or sig')
+    parser.add_argument('--type', nargs="?", type = str, default = 'sig', help='bkg or sig')
     parser.add_argument('--depth', nargs="?", default = 'middle' , help='preselection or middle')
     parser.add_argument('--clean_data', nargs="?", type = bool, default = True,  help=' apply additional cuts: remove all the value > 1000 and < 0')
 
