@@ -239,10 +239,10 @@ def train_val_test_split(input_data_folder, output_data_folder, proportions, see
 
     return
 
-def load_data_train_eval(train_val_test, config, feat_selected = ['met', 'mt', 'mct2'] ):
+def load_data_train_eval(feat_selected, config, data_folder = train_val_test):
 
-    bkg = np.load(train_val_test + 'background_train.npy')
-    bkg_val = np.load(train_val_test + 'background_val.npy')
+    bkg = np.load(data_folder + 'background_train.npy')
+    bkg_val = np.load(data_folder + 'background_val.npy')
 
     train_df = pd.DataFrame(bkg[:, :-1], columns=cols_train)
     val_df = pd.DataFrame(bkg_val[:, :-1], columns=cols_train)
@@ -250,7 +250,6 @@ def load_data_train_eval(train_val_test, config, feat_selected = ['met', 'mt', '
     train_data = PandasDF(train_df, feat_selected)
     val_data = PandasDF(val_df, feat_selected)
 
-    #batch_size = train_dict['batch_size']
     batch_size = config['batch_size']
 
     trainloader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -271,6 +270,87 @@ def initialize_model(config, input_size):
               , latent_dim, Nf_lognorm, Nf_binomial)
 
     return vae
+
+def train_class(config, vae, input_size, optimizer, trainloader, valloader,
+                device, checkpoint_dir = None):
+
+    cuda = torch.cuda.is_available()
+    if cuda:
+        print('added visible gpu')
+        ngpus = torch.cuda.device_count()
+
+    Nf_lognorm = config['Nf_lognorm']
+    weight_KL_loss = config['weight_KL_loss']
+    epochs = config['epochs']
+    lr = config['lr']
+    model_name = config['model_name']
+    Nf_binomial = input_size - Nf_lognorm
+
+    ####Train Loop####
+    """
+    Set the model to the training mode first and train
+    """
+    train_loss = []
+    weights_loss = [5, 10, 10]
+    patience = 1
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min',  factor=0.8, patience=patience, threshold=0.0001,
+                                              threshold_mode='rel', cooldown=0, min_lr=9e-8, verbose=True)
+
+    if checkpoint_dir:
+        model_state, optimizer_state = torch.load(
+            os.path.join(checkpoint_dir, "model_name"))
+        vae.load_state_dict(model_state)
+        optimizer.load_state_dict(optimizer_state)
+
+    for epoch in range(epochs):
+        vae.train()
+        running_loss = 0.0
+        for i, data in enumerate(trainloader):
+            optimizer.zero_grad()
+            x = data[0].to(device)
+            pars, mu, sigma, mu_prior, sigma_prior = vae(x)
+
+            recon_loss = loss_function(x, pars, Nf_lognorm,
+                                       Nf_binomial, weights_loss).mean()
+
+            KLD = KL_loss_forVAE(mu, sigma, mu_prior, sigma_prior).mean()
+            loss = recon_loss + weight_KL_loss * KLD  # the mean of KL is added to the mean of MSE
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+            train_loss.append(loss.item())
+
+            if i % 10 == 0:
+                print("Loss: {}".format(loss.item()))
+                print("kl div {}".format(KLD))
+
+        ###############################################
+        # eval mode for evaluation on validation dataset
+        ###############################################
+
+        # Validation loss
+        #val_loss = 0.0
+        temp_val_loss = 0.0
+        val_steps = 0
+        for i, data in enumerate(valloader, 0):
+            with torch.no_grad():
+
+                x = data[0].to(device)
+                pars, mu, sigma, mu_prior, sigma_prior = vae(x)
+                recon_loss = loss_function(x, pars, Nf_lognorm,
+                                           Nf_binomial, weights_loss).mean()
+
+                KLD = KL_loss_forVAE(mu, sigma, mu_prior, sigma_prior).mean()
+                temp_val_loss += recon_loss + weight_KL_loss * KLD
+
+                val_steps += 1
+        val_loss = temp_val_loss / len(valloader)
+        val_loss_cpu = val_loss.cpu().item()
+        print('validation_loss {}'.format(val_loss_cpu))
+        scheduler.step(val_loss)
+        return val_loss_cpu
+
 
 def train(config, checkpoint_dir=None):
     cuda = torch.cuda.is_available()
@@ -357,7 +437,7 @@ def train(config, checkpoint_dir=None):
 
                 val_steps += 1
         val_loss = temp_val_loss / len(valloader)
-        val_loss_cpu = val_loss.cpu()
+        val_loss_cpu = val_loss.cpu().item()
         print('validation_loss {}'.format(val_loss))
         #scheduler.step(val_loss)
 
@@ -367,11 +447,10 @@ def train(config, checkpoint_dir=None):
 
         #vae.eval()
         with tune.checkpoint_dir(step=epoch) as checkpoint_dir:
-            path = os.path.join(checkpoint_dir, "checkpoint")
-            torch.save(
-                (vae.state_dict(), optimizer.state_dict()), path)
-        #tune.report(loss=(val_loss / val_steps))
-        tune.report(loss=(val_loss_cpu))
+            path = os.path.join(checkpoint_dir, "vae.pth")
+            torch.save((vae.state_dict(), optimizer.state_dict()), path)
+
+        #tune.report(loss=(val_loss_cpu))
 
         #if temp_val_loss < val_loss:
         #    print('val_loss improved from {} to {}, saving model to {}' \

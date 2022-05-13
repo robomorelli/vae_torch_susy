@@ -1,9 +1,10 @@
 import os
 
-root = os.getcwd()
+#root = os.getcwd()
+root = "/davinci-1/home/morellir/artificial_intelligence/repos/vae_torch_susy/"
 root_folder = './root_data/'
 
-ray_model_results = root + '/model_results/ray_results/'
+ray_model_results = root + 'model_results/ray_results/'
 
 splitted_numpy_bkg = root + 'splitted_numpy_bkg/'
 splitted_numpy_bkg_pre = root + 'splitted_numpy_bkg/preselection/'
@@ -30,11 +31,11 @@ numpy_sig_syst_up_pre = root + 'numpy_data/signal_sys/up/preselection/'
 numpy_sig_syst_down_middle = 'numpy_data/signal_sys/down/middle/'
 numpy_sig_syst_up_middle = 'numpy_data/signal_sys/up/middle/'
 
-train_val_test = root + '/numpy_data/train_val_test/'
-train_val_test_mod_dep = root + '/numpy_data/train_val_test/model_dependent/'
-train_val_test_mod_dep_boot_30_30_40 = root + '/numpy_data/train_val_test/bootstrap/model_dependent/bck_sig_30_30_40_bootstrap/'
+train_val_test = root + 'numpy_data/train_val_test/'
+train_val_test_mod_dep = root + 'numpy_data/train_val_test/model_dependent/'
+train_val_test_mod_dep_boot_30_30_40 = root + 'numpy_data/train_val_test/bootstrap/model_dependent/bck_sig_30_30_40_bootstrap/'
 
-model_results_path = root + '/model_results/'
+model_results_path = root + 'model_results/'
 
 plot_results = 'plot_results/'
 dict_results = 'dict_results/'
@@ -136,3 +137,4 @@ if not os.path.exists(dict_results):
 
 if not os.path.exists(json_results):
     os.makedirs(json_results)
+    
