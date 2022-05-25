@@ -10,7 +10,7 @@ def loss_function(x, pars, Nf_lognorm, Nf_binomial, weights_loss):
     recon_loss = RecoProb_forVAE(x, pars[0], pars[1], pars[2], Nf_lognorm, Nf_binomial, weights_loss)
     return recon_loss
 
-def RecoProb_forVAE(x, par1, par2, par3, Nf_lognorm, Nf_binomial, weights_loss = [1, 1, 1]):
+def RecoProb_forVAE(x, par1, par2, par3, Nf_lognorm, Nf_binomial, weights_loss = [5, 10, 10]):
 
     N = 0
     nll_loss = 0

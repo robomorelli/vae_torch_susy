@@ -64,14 +64,14 @@ if __name__ == "__main__":
 
   config = {
       "Nf_lognorm": tune.choice([3]),
-      "hidden_size": tune.choice([20]),
+      "hidden_size": tune.choice([20, 40, 50]),
       "latent_dim": tune.choice([2, 3, 4]),
-      "weight_KL_loss": tune.choice([0.6]),
+      "weight_KL_loss": tune.choice([0.4, 0.6, 0.8]),
       "epochs": tune.choice([100]),
-      "lr": tune.choice([0.003]),
-      "act_fun": tune.choice(['relu']),
+      "lr": tune.choice([0.003, 0.001, 0.0009]),
+      "act_fun": tune.choice(['relu', 'elu']),
       "model_name": tune.choice(["vae_susy.h5"]),
-      "batch_size": tune.choice([200, 400, 600, 100]),
+      "batch_size": tune.choice([200, 400, 600, 1000]),
       "feat_selected" : ['met', 'mt', 'mct2']
   }
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
                       scheduler=sched,
                       stop={"training_iteration": 10 ** 16},
                       resources_per_trial={"cpu": 10, "gpu": 1},
-                      num_samples=10,
+                      num_samples=1000,
                       checkpoint_at_end=True,
                       #checkpoint_freq=1,
                       local_dir="~/ray_results",
